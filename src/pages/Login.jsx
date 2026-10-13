@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../api/axios";
 
 function Login() {
     const [email, setEmail] = useState("");
@@ -24,28 +24,40 @@ function Login() {
         localStorage.removeItem("auth_token");
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
+        localStorage.removeItem("current_user");
 
         try {
             // ==========================================================
-            // 1. PRODUCT REVIEW TEAM LOGIN
+            // 1. LOGIN
             // ==========================================================
 
-            const response = await axios.post(
-                "http://127.0.0.1:8000/api/accounts/login/",
+            console.log(
+                "LOGIN API:",
+                api.defaults.baseURL + "/accounts/login/"
+            );
+
+            const response = await api.post(
+                "/accounts/login/",
                 {
                     email: email.trim(),
                     password: password,
                 }
             );
 
-            console.log("LOGIN RESPONSE:", response.data);
+            console.log(
+                "LOGIN RESPONSE:",
+                response.data
+            );
 
             // ==========================================================
             // 2. GET JWT TOKENS
             // ==========================================================
 
-            const accessToken = response.data.access;
-            const refreshToken = response.data.refresh;
+            const accessToken =
+                response.data.access;
+
+            const refreshToken =
+                response.data.refresh;
 
             if (!accessToken) {
                 throw new Error(
@@ -57,13 +69,11 @@ function Login() {
             // 3. SAVE TOKENS
             // ==========================================================
 
-            // Main token used by the dashboard
             localStorage.setItem(
                 "auth_token",
                 accessToken
             );
 
-            // Also keep standard names
             localStorage.setItem(
                 "access_token",
                 accessToken
@@ -84,13 +94,13 @@ function Login() {
             // 4. GET CURRENT USER
             // ==========================================================
 
-            const userResponse = await axios.get(
-                "http://127.0.0.1:8000/api/accounts/me/",
-                {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                }
+            // IMPORTANT:
+            // The token is already saved above.
+            // axios.js interceptor will automatically
+            // add Authorization: Bearer <token>
+
+            const userResponse = await api.get(
+                "/accounts/me/"
             );
 
             const user = userResponse.data;
@@ -108,9 +118,21 @@ function Login() {
                 user.role !== "product_reviewer" ||
                 user.account_status !== "active"
             ) {
-                localStorage.removeItem("auth_token");
-                localStorage.removeItem("access_token");
-                localStorage.removeItem("refresh_token");
+                localStorage.removeItem(
+                    "auth_token"
+                );
+
+                localStorage.removeItem(
+                    "access_token"
+                );
+
+                localStorage.removeItem(
+                    "refresh_token"
+                );
+
+                localStorage.removeItem(
+                    "current_user"
+                );
 
                 setError(
                     "Access denied. You are not an active Product Review Team member."
@@ -120,33 +142,65 @@ function Login() {
             }
 
             // ==========================================================
-            // 6. LOGIN SUCCESS
+            // 6. SAVE CURRENT USER
+            // ==========================================================
+
+            localStorage.setItem(
+                "current_user",
+                JSON.stringify(user)
+            );
+
+            // ==========================================================
+            // 7. LOGIN SUCCESS
             // ==========================================================
 
             console.log(
                 "Product Review Team login successful"
             );
 
-            navigate("/dashboard");
+            navigate("/dashboard", {
+                replace: true,
+            });
 
         } catch (error) {
 
             console.error(
                 "LOGIN ERROR:",
-                error.response?.status,
-                error.response?.data || error.message
+                error
+            );
+
+            console.error(
+                "STATUS:",
+                error.response?.status
+            );
+
+            console.error(
+                "RESPONSE:",
+                error.response?.data
             );
 
             // ==========================================================
             // CLEAR TOKENS
             // ==========================================================
 
-            localStorage.removeItem("auth_token");
-            localStorage.removeItem("access_token");
-            localStorage.removeItem("refresh_token");
+            localStorage.removeItem(
+                "auth_token"
+            );
+
+            localStorage.removeItem(
+                "access_token"
+            );
+
+            localStorage.removeItem(
+                "refresh_token"
+            );
+
+            localStorage.removeItem(
+                "current_user"
+            );
 
             // ==========================================================
-            // BACKEND ERROR MESSAGE
+            // BACKEND ERROR
             // ==========================================================
 
             const backendError =
@@ -166,18 +220,10 @@ function Login() {
         }
     };
 
-    // ==========================================================
-    // UI
-    // ==========================================================
-
     return (
         <div style={styles.page}>
 
             <div style={styles.card}>
-
-                {/* ==================================================
-                    TITLE
-                ================================================== */}
 
                 <h1 style={styles.title}>
                     ClayWare
@@ -186,11 +232,6 @@ function Login() {
                 <p style={styles.subtitle}>
                     Product Review Team
                 </p>
-
-
-                {/* ==================================================
-                    LOGIN FORM
-                ================================================== */}
 
                 <form onSubmit={login}>
 
@@ -208,7 +249,6 @@ function Login() {
                         required
                     />
 
-
                     {/* PASSWORD */}
 
                     <input
@@ -223,7 +263,6 @@ function Login() {
                         required
                     />
 
-
                     {/* ERROR */}
 
                     {error && (
@@ -231,7 +270,6 @@ function Login() {
                             {error}
                         </p>
                     )}
-
 
                     {/* LOGIN BUTTON */}
 
@@ -252,11 +290,6 @@ function Login() {
 
                 </form>
 
-
-                {/* ==================================================
-                    FOOTER
-                ================================================== */}
-
                 <p style={styles.footer}>
                     Internal Company Portal
                 </p>
@@ -274,10 +307,6 @@ function Login() {
 
 const styles = {
 
-    // ==========================================================
-    // PAGE
-    // ==========================================================
-
     page: {
         minHeight: "100vh",
         display: "flex",
@@ -287,11 +316,6 @@ const styles = {
         padding: "20px",
         boxSizing: "border-box",
     },
-
-
-    // ==========================================================
-    // CARD
-    // ==========================================================
 
     card: {
         width: "380px",
@@ -304,11 +328,6 @@ const styles = {
         boxSizing: "border-box",
     },
 
-
-    // ==========================================================
-    // TITLE
-    // ==========================================================
-
     title: {
         textAlign: "center",
         margin: "0 0 5px 0",
@@ -316,22 +335,12 @@ const styles = {
         color: "#222",
     },
 
-
-    // ==========================================================
-    // SUBTITLE
-    // ==========================================================
-
     subtitle: {
         textAlign: "center",
         color: "#666",
         margin: "0 0 30px 0",
         fontSize: "16px",
     },
-
-
-    // ==========================================================
-    // INPUT
-    // ==========================================================
 
     input: {
         width: "100%",
@@ -345,11 +354,6 @@ const styles = {
         background: "#ffffff",
     },
 
-
-    // ==========================================================
-    // BUTTON
-    // ==========================================================
-
     button: {
         width: "100%",
         padding: "13px",
@@ -362,20 +366,10 @@ const styles = {
         cursor: "pointer",
     },
 
-
-    // ==========================================================
-    // DISABLED BUTTON
-    // ==========================================================
-
     buttonDisabled: {
         opacity: 0.7,
         cursor: "not-allowed",
     },
-
-
-    // ==========================================================
-    // ERROR
-    // ==========================================================
 
     error: {
         color: "#d32f2f",
@@ -383,11 +377,6 @@ const styles = {
         marginTop: "0",
         marginBottom: "15px",
     },
-
-
-    // ==========================================================
-    // FOOTER
-    // ==========================================================
 
     footer: {
         textAlign: "center",
@@ -397,6 +386,5 @@ const styles = {
         marginBottom: 0,
     },
 };
-
 
 export default Login;
