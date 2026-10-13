@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import ProductReviewerLogin from "../pages/ProductReviewerLogin";
 import ProductReview from "../pages/ProductReview";
 import Dashboard from "../pages/Dashboard";
+ import ProductReview from "../pages/ProductReview";
 
 
 function ProtectedReviewerRoute({ children }) {
@@ -73,6 +74,13 @@ function ProductReviewRoutes() {
                     />
                 }
             />
+
+           
+
+<Route
+    path="/product-reviews/:productId"
+    element={<ProductReview />}
+/>
 
         </Routes>
     );
